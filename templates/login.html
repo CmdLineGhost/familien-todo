@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Familien-Organizer - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Login Screen (initial state) -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-card">
+            <h2 class="login-title">Familien-Organizer Login</h2>
+            <form class="login-form" id="loginForm" method="POST" action="/login">
+                <input type="text" class="form-input" id="username" name="email" placeholder="Benutzername" required>
+                <input type="password" class="form-input" id="password" name="password" placeholder="Passwort" required>
+                <button type="submit" class="login-btn" id="loginBtn">Einloggen</button>
+                <p class="register-link">
+                  Noch keinen Account? <a href="/register">Jetzt registrieren</a>
+                </p>
+            </form>
+        </div>
+    </div>
+    
+    <!-- App Content (hidden until login) -->
+    <div id="appContent" {% if not show_app_content %}style="display: none;"{% endif %}>
+        <header>
+            <div class="container">
+                <div class="header-content">
+                    <h1 class="app-title">Familien-Organizer</h1>
+                    <div class="user-profile">
+                        <div class="user-avatar">
+                            <img src="" alt="User Avatar" id="userAvatar">
+                        </div>
+                        <span class="user-name" id="userName">Benutzername</span>
+                        <button class="action-btn" id="logoutBtn" title="Abmelden">↩️</button>
+                    </div>
+                </div>
+                <nav class="nav-menu">
+                    <a href="#" class="nav-item active" data-section="dashboard">Dashboard</a>
+                    <a href="#" class="nav-item" data-section="todo">To-Do Liste</a>
+                    <a href="#" class="nav-item" data-section="calendar">Kalender</a>
+                    <a href="#" class="nav-item" data-section="messages">Nachrichten</a>
+                    <a href="#" class="nav-item" id="adminLink" style="display:none" data-section="admin">Admin</a>
+                </nav>
+            </div>
+        </header>
+        
+        <main>
+            <div class="container">
+                <!-- Dashboard Section -->
+                <div class="dashboard-section" id="dashboardSection">
+                    <div class="dashboard">
+                        <div class="dashboard-card todo-card">
+                            <div class="card-header todo-header">
+                                <h3>Meine Aufgaben</h3>
+                                <button class="add-task-btn" id="addTaskBtn" title="Neue Aufgabe">+</button>
+                            </div>
+                            <div class="card-body">
+                                <ul class="todo-list" id="todoList">
+                                    <!-- Aufgaben werden hier dynamisch eingefügt -->
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="dashboard-card calendar-card">
+                            <div class="card-header calendar-header">
+                                <h3>Termine</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="calendar-placeholder" id="calendarContent">
+                                    <!-- Kalenderinhalte werden dynamisch eingefügt -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="dashboard-card messages-card">
+                            <div class="card-header messages-header">
+                                <h3>Nachrichten</h3>
+                            </div>
+                            <div class="card-body">
+                                <div id="messagesContent">
+                                    <!-- Nachrichten werden dynamisch eingefügt -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- To-Do List Section (hidden by default) -->
+                <div class="todo-section" id="todoSection" style="display: none;">
+                    <div class="dashboard-card">
+                        <div class="card-header todo-header">
+                            <h3>Alle Aufgaben</h3>
+                            <button class="add-task-btn" id="addTaskBtnFull">+</button>
+                        </div>
+                        <div class="card-body">
+                            <ul class="todo-list" id="fullTodoList">
+                                <!-- Alle Aufgaben werden hier dynamisch eingefügt -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Calendar Section (hidden by default) -->
+                <div class="calendar-section" id="calendarSection" style="display: none;">
+                    <div class="dashboard-card">
+                        <div class="card-header calendar-header">
+                            <h3>Familienkalender</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="fullCalendarContent">
+                                <!-- Vollständiger Kalender wird hier dynamisch eingefügt -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Messages Section (hidden by default) -->
+                <div class="messages-section" id="messagesSection" style="display: none;">
+                    <div class="dashboard-card">
+                        <div class="card-header messages-header">
+                            <h3>Familiennachrichten</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="fullMessagesContent">
+                                <!-- Vollständige Nachrichten werden hier dynamisch eingefügt -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Task Form Modal -->
+        <div class="modal" id="taskModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">Neue Aufgabe hinzufügen</h3>
+                    <button class="close-modal" id="closeModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="taskForm">
+                        <div class="form-group">
+                            <label for="taskTitle">Titel *</label>
+                            <input type="text" id="taskTitle" class="input-field" placeholder="Was muss getan werden?" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taskDescription">Beschreibung</label>
+                            <textarea id="taskDescription" class="input-field textarea-field" placeholder="Beschreibe die Aufgabe genauer..."></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taskDueDate">Fälligkeitsdatum</label>
+                            <input type="date" id="taskDueDate" class="input-field">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="assignedTo">Zugewiesen an</label>
+                            <select id="assignedTo" class="user-select">
+                                <option value="me">Mir</option>
+                                <option value="mama">Mama</option>
+                                <option value="papa">Papa</option>
+                                <option value="kind">Kind</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" id="cancelTaskBtn">Abbrechen</button>
+                    <button class="btn btn-success" id="saveTaskBtn">Speichern</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Confirmation Dialog -->
+        <div class="confirm-dialog" id="confirmDialog">
+            <p class="confirm-message" id="confirmMessage">Aufgabe wirklich löschen?</p>
+            <div class="confirm-actions">
+                <button class="btn btn-cancel" id="cancelDeleteBtn">Abbrechen</button>
+                <button class="btn btn-confirm" id="confirmDeleteBtn">Löschen</button>
+            </div>
+        </div>
+        
+        <!-- Feedback Message -->
+        <div class="feedback-message" id="feedbackMessage"></div>
+        
+        <footer>
+            <div class="container">
+                <p class="footer-text">© 2025 Familien-Organizer | Alle Rechte vorbehalten</p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+</body>
+</html>
