@@ -705,3 +705,7 @@
             border: 1px solid #d8000c;
             border-radius: 5px;
           }
+
+        .hidden {
+            display: none !important;
+        }

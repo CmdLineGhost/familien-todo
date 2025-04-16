@@ -45,6 +45,9 @@ def index():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    if 'user_id' in session:
+        return redirect('/dashboard')
+        
     if request.method == 'POST':
         email = request.form['email']
         existing_user = User.query.filter_by(email=email).first()
@@ -58,26 +61,46 @@ def register():
         db.session.commit()
         session['user_id'] = user.id
         session['logged_in'] = True
-        return redirect('/login')
+        return redirect('/dashboard')
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'GET':
+        if 'user_id' in session:
+            return redirect('/dashboard')
         return render_template('login.html')
-    email = request.form['email']
-    password = request.form['password']
-    user = User.query.filter_by(email=email).first()
-    if user and bcrypt.check_password_hash(user.password, password):
-        session['user_id'] = user.id
-        session['logged_in'] = True
-        return {
-            'success': True,
-            'name': email.split('@')[0].capitalize(),
-            'is_admin': user.is_admin
-        }
-    else:
-        return {'success': False, 'message': 'Ungültige Login-Daten'}, 401
+        
+    if request.method == 'POST':
+        if request.is_json:
+            data = request.get_json()
+            email = data.get('email')
+            password = data.get('password')
+        else:
+            email = request.form.get('email')
+            password = request.form.get('password')
+
+        user = User.query.filter_by(email=email).first()
+        
+        if user and bcrypt.check_password_hash(user.password, password):
+            session['user_id'] = user.id
+            session['logged_in'] = True
+            session.permanent = True  # Session bleibt auch nach Schließen des Browsers erhalten
+            
+            if request.is_json:
+                return jsonify({
+                    'success': True,
+                    'name': email.split('@')[0].capitalize(),
+                    'is_admin': user.is_admin
+                })
+            else:
+                return redirect('/dashboard')
+        else:
+            if request.is_json:
+                return jsonify({'success': False, 'message': 'Ungültige Login-Daten'}), 401
+            else:
+                flash('Ungültige Login-Daten', 'error')
+                return redirect('/login')
 
 @app.route('/logout')
 def logout():
@@ -88,8 +111,16 @@ def logout():
 def dashboard():
     if 'user_id' not in session:
         return redirect('/login')
-    tasks = Task.query.filter_by(user_id=session['user_id']).all()
-    return render_template('login.html', tasks=tasks, show_app_content=True)
+    
+    user = User.query.get(session['user_id'])
+    if not user:
+        session.clear()
+        return redirect('/login')
+        
+    return render_template('login.html', 
+                         show_app_content=True,
+                         user_name=user.email.split('@')[0].capitalize(),
+                         is_admin=user.is_admin)
 
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():

@@ -5,39 +5,12 @@ const familyMembers = [
     { id: 'kind', name: 'Kind', color: '#B8EECA', avatar: '🧒' }
 ];
 
-// Beispiel-Aufgaben
-let tasks = [
-    {
-        id: 1,
-        title: 'Zimmer aufräumen',
-        description: 'Bitte vor dem Abendessen das Zimmer ordentlich aufräumen.',
-        completed: false,
-        assignedTo: 'kind',
-        dueDate: getFormattedDate(new Date()),
-        createdAt: getCurrentTime()
-    },
-    {
-        id: 2,
-        title: 'Hausaufgaben machen',
-        description: 'Mathe-Übungen auf Seite 42-43 lösen.',
-        completed: true,
-        assignedTo: 'kind',
-        dueDate: getFormattedDate(new Date()),
-        createdAt: '09:30'
-    },
-    {
-        id: 3,
-        title: 'Einkaufsliste vorbereiten',
-        description: 'Notiere was wir für das Wochenende brauchen.',
-        completed: false,
-        assignedTo: 'mama',
-        dueDate: getFormattedDate(new Date(new Date().setDate(new Date().getDate() + 1))),
-        createdAt: '11:15'
-    }
-];
+// Globale Variablen
+let currentUser = null;
+let tasks = []; // Leeres Array für Aufgaben, wird durch API-Aufrufe gefüllt
 
 // Beispiel-Termine
-let events = [
+const events = [
     {
         id: 1,
         title: 'Einkaufen',
@@ -69,7 +42,7 @@ let events = [
 ];
 
 // Beispiel-Nachrichten
-let messages = [
+const messages = [
     {
         id: 1,
         sender: 'mama',
@@ -92,9 +65,6 @@ let messages = [
         read: false
     }
 ];
-
-// Aktueller Benutzer
-let currentUser = null;
 
 // Modal State
 let isEditingTask = false;
@@ -178,23 +148,30 @@ function initialize() {
 
 // Login-Handler
 function handleLogin(event) {
-    event.preventDefault(); // Verhindert das Standardverhalten
+    event.preventDefault();
 
-    const formData = new FormData(loginForm);
+    const email = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
 
     fetch('/login', {
         method: 'POST',
-        body: formData
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            email: email,
+            password: password
+        })
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
             currentUser = {
                 id: data.id || 'user',
-                name: data.name || 'Benutzer',
+                name: data.name,
                 avatar: '👤',
                 color: getRandomColor(),
-                isAdmin: data.is_admin || false
+                isAdmin: data.is_admin
             };
 
             // UI aktualisieren
@@ -208,9 +185,13 @@ function handleLogin(event) {
                 adminLink.style.display = 'none';
             }
 
+            // Login ausblenden und Dashboard anzeigen
             loginContainer.style.display = 'none';
             appContent.style.display = 'block';
-            renderAllData();
+            
+            // Aufgaben laden
+            loadTasks();
+            
             showFeedback(`Willkommen zurück, ${currentUser.name}!`);
         } else {
             alert(data.message || 'Anmeldung fehlgeschlagen.');
@@ -224,11 +205,14 @@ function handleLogin(event) {
 
 // Logout-Handler
 function handleLogout() {
-    currentUser = null;
-    appContent.style.display = 'none';
-    loginContainer.style.display = 'flex';
-    usernameInput.value = '';
-    passwordInput.value = '';
+    fetch('/logout')
+        .then(() => {
+            window.location.href = '/login';
+        })
+        .catch(err => {
+            console.error('Logout-Fehler:', err);
+            alert('Fehler beim Logout.');
+        });
 }
 
 // Navigation-Handler
@@ -250,10 +234,10 @@ function handleNavigation(section) {
     // Daten für die aktive Sektion rendern
     switch(section) {
         case 'dashboard':
-            renderDashboard();
+            renderAllData();
             break;
         case 'todo':
-            renderFullTodoList();
+            renderFullTodoList(tasks);
             break;
         case 'calendar':
             renderFullCalendar();
@@ -266,24 +250,29 @@ function handleNavigation(section) {
 
 // Alle Daten rendern
 function renderAllData() {
-    renderDashboard();
-    renderFullTodoList();
+    renderTasks(tasks);
+    renderFullTodoList(tasks);
+    renderCalendarOverview();
+    renderMessagesOverview();
     renderFullCalendar();
     renderFullMessages();
 }
 
 // Dashboard rendern
 function renderDashboard() {
-    renderTasks();
+    renderTasks(tasks);
     renderCalendarOverview();
     renderMessagesOverview();
 }
 
 // Aufgaben rendern (für Dashboard)
-function renderTasks() {
+function renderTasks(taskList) {
     todoList.innerHTML = '';
 
-    const uncompletedTasks = tasks.filter(task => !task.completed).slice(0, 5);
+    // Wenn keine taskList übergeben wurde, verwende das globale tasks Array
+    const tasksToRender = taskList || tasks;
+    
+    const uncompletedTasks = tasksToRender.filter(task => !task.completed).slice(0, 5);
 
     if (uncompletedTasks.length === 0) {
         todoList.innerHTML = '<li class="empty-state"><p>Keine offenen Aufgaben. Super gemacht! 🎉</p></li>';
@@ -297,22 +286,25 @@ function renderTasks() {
 }
 
 // Vollständige Aufgabenliste rendern
-function renderFullTodoList() {
+function renderFullTodoList(taskList) {
     fullTodoList.innerHTML = '';
 
-    if (tasks.length === 0) {
+    // Wenn keine taskList übergeben wurde, verwende das globale tasks Array
+    const tasksToRender = taskList || tasks;
+
+    if (tasksToRender.length === 0) {
         fullTodoList.innerHTML = '<li class="empty-state"><p>Keine Aufgaben vorhanden.</p></li>';
         return;
     }
 
     // Nach Status und Fälligkeitsdatum sortieren
-    tasks.sort((a, b) => {
+    const sortedTasks = [...tasksToRender].sort((a, b) => {
         if (a.completed !== b.completed) return a.completed ? 1 : -1;
-        if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate);
+        if (a.due_date && b.due_date) return new Date(a.due_date) - new Date(b.due_date);
         return 0;
     });
 
-    tasks.forEach(task => {
+    sortedTasks.forEach(task => {
         const li = createTaskElement(task);
         fullTodoList.appendChild(li);
     });
@@ -420,7 +412,7 @@ function renderMessagesOverview() {
 
     // Letzten 2 Nachrichten anzeigen
     const recentMessages = [...messages]
-        .sort((a, b) => new Date(b.time) - new Date(a.time))
+        .sort((a, b) => new Date('2024-01-01 ' + b.time) - new Date('2024-01-01 ' + a.time))
         .slice(0, 2);
 
     if (recentMessages.length === 0) {
@@ -429,7 +421,8 @@ function renderMessagesOverview() {
     }
 
     recentMessages.forEach(message => {
-        messagesContent.appendChild(createMessageElement(message));
+        const messageDiv = createMessageElement(message);
+        messagesContent.appendChild(messageDiv);
     });
 }
 
@@ -471,37 +464,29 @@ function createTaskElement(task) {
 
     const description = document.createElement('p');
     description.className = 'todo-description';
-    description.textContent = task.description;
+    description.textContent = task.description || '';
 
     const meta = document.createElement('div');
     meta.className = 'todo-meta';
 
-    const assignedTo = document.createElement('div');
-    assignedTo.className = 'assigned-to';
+    const timeInfo = document.createElement('div');
+    timeInfo.className = 'time-info';
 
-    const member = familyMembers.find(m => m.id === task.assignedTo) ||
-                  { id: task.assignedTo, name: task.assignedTo, color: getRandomColor(), avatar: '👤' };
-
-    const miniAvatar = document.createElement('div');
-    miniAvatar.className = 'mini-avatar';
-    miniAvatar.textContent = member.avatar;
-    miniAvatar.style.backgroundColor = member.color;
-
-    const assignedName = document.createElement('span');
-    assignedName.textContent = member.name;
-
-    const dueDate = document.createElement('span');
-    if (task.dueDate) {
-        const dueDateObj = new Date(task.dueDate);
+    // Fälligkeitsdatum
+    if (task.due_date) {
+        const dueDate = document.createElement('span');
+        dueDate.className = 'due-date';
+        const dueDateObj = new Date(task.due_date);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
         if (dueDateObj < today && !task.completed) {
             dueDate.style.color = 'var(--danger)';
-            dueDate.textContent = ` (überfällig: ${dueDateObj.toLocaleDateString('de-DE')})`;
-        } else if (task.dueDate) {
-            dueDate.textContent = ` (fällig: ${dueDateObj.toLocaleDateString('de-DE')})`;
+            dueDate.textContent = `Überfällig: ${dueDateObj.toLocaleDateString('de-DE')}`;
+        } else {
+            dueDate.textContent = `Fällig: ${dueDateObj.toLocaleDateString('de-DE')}`;
         }
+        timeInfo.appendChild(dueDate);
     }
 
     const actions = document.createElement('div');
@@ -515,22 +500,15 @@ function createTaskElement(task) {
     editBtn.addEventListener('click', () => openTaskModal(true, task.id));
     actions.appendChild(editBtn);
 
-    // Löschen-Button (nur für Admin oder eigene Aufgaben)
-    if (currentUser.isAdmin || task.assignedTo === currentUser.id) {
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'action-btn delete-btn';
-        deleteBtn.innerHTML = '🗑️';
-        deleteBtn.title = 'Löschen';
-        deleteBtn.addEventListener('click', () => confirmDelete(task.id));
-        actions.appendChild(deleteBtn);
-    }
+    // Löschen-Button
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'action-btn delete-btn';
+    deleteBtn.innerHTML = '🗑️';
+    deleteBtn.title = 'Löschen';
+    deleteBtn.addEventListener('click', () => confirmDelete(task.id));
+    actions.appendChild(deleteBtn);
 
-    // Zusammensetzen
-    assignedTo.appendChild(miniAvatar);
-    assignedTo.appendChild(assignedName);
-    assignedTo.appendChild(dueDate);
-
-    meta.appendChild(assignedTo);
+    meta.appendChild(timeInfo);
     meta.appendChild(actions);
 
     content.appendChild(title);
@@ -581,7 +559,7 @@ function createEventElement(event) {
 function createMessageElement(message) {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message-item';
-    if (!message.read && message.sender !== currentUser.id) {
+    if (!message.read) {
         messageDiv.style.backgroundColor = 'rgba(163, 217, 255, 0.2)';
     }
 
@@ -614,11 +592,6 @@ function createMessageElement(message) {
 
     messageDiv.appendChild(messageHeader);
     messageDiv.appendChild(messageContent);
-
-    // Nachricht als gelesen markieren
-    if (!message.read && message.sender !== currentUser.id) {
-        message.read = true;
-    }
 
     return messageDiv;
 }
@@ -654,7 +627,6 @@ function toggleTaskStatus(id) {
 function openTaskModal(editing, taskId = null) {
     // Modal zurücksetzen
     taskForm.reset();
-    document.getElementById('assignedTo').value = 'me';
     document.getElementById('taskDueDate').value = '';
 
     if (editing && taskId) {
@@ -668,9 +640,8 @@ function openTaskModal(editing, taskId = null) {
         if (task) {
             document.getElementById('taskTitle').value = task.title;
             document.getElementById('taskDescription').value = task.description || '';
-            document.getElementById('assignedTo').value = task.assignedTo === currentUser.id ? 'me' : task.assignedTo;
-            if (task.dueDate) {
-                document.getElementById('taskDueDate').value = task.dueDate;
+            if (task.due_date) {
+                document.getElementById('taskDueDate').value = task.due_date.split('T')[0];
             }
         }
     } else {
@@ -753,15 +724,10 @@ function saveTask() {
 function loadTasks() {
     fetch('/api/tasks')
         .then(response => response.json())
-        .then(tasks => {
-            // Dashboard-Ansicht aktualisieren
-            if (todoList) {
-                renderTasks(tasks);
-            }
-            // Vollständige Aufgabenliste aktualisieren
-            if (fullTodoList) {
-                renderFullTodoList(tasks);
-            }
+        .then(taskList => {
+            tasks = taskList; // Aktualisiere das globale tasks Array
+            renderTasks(tasks);
+            renderFullTodoList(tasks);
         })
         .catch(error => {
             console.error('Fehler beim Laden der Aufgaben:', error);
@@ -834,7 +800,14 @@ function getRandomColor() {
 // Initialisierung
 document.addEventListener('DOMContentLoaded', () => {
     initialize();
-    if (currentUser) {
+    
+    // Wenn wir uns auf der Dashboard-Seite befinden
+    if (appContent && appContent.style.display !== 'none') {
+        // Login-Container ausblenden
+        loginContainer.style.display = 'none';
+        // Alle Daten laden und rendern
         loadTasks();
+        renderCalendarOverview();
+        renderMessagesOverview();
     }
 });

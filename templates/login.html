@@ -8,7 +8,7 @@
 </head>
 <body>
     <!-- Login Screen (initial state) -->
-    <div class="login-container" id="loginContainer">
+    <div class="login-container" id="loginContainer" {% if show_app_content %}style="display: none;"{% endif %}>
         <div class="login-card">
             <h2 class="login-title">Familien-Organizer Login</h2>
             <form class="login-form" id="loginForm" method="POST" action="/login">
@@ -32,7 +32,7 @@
                         <div class="user-avatar">
                             <img src="" alt="User Avatar" id="userAvatar">
                         </div>
-                        <span class="user-name" id="userName">Benutzername</span>
+                        <span class="user-name" id="userName">{% if user_name %}{{ user_name }}{% else %}Benutzername{% endif %}</span>
                         <button class="action-btn" id="logoutBtn" title="Abmelden">↩️</button>
                     </div>
                 </div>
@@ -41,7 +41,7 @@
                     <a href="#" class="nav-item" data-section="todo">To-Do Liste</a>
                     <a href="#" class="nav-item" data-section="calendar">Kalender</a>
                     <a href="#" class="nav-item" data-section="messages">Nachrichten</a>
-                    <a href="#" class="nav-item" id="adminLink" style="display:none" data-section="admin">Admin</a>
+                    <a href="#" class="nav-item" id="adminLink" class="{% if not is_admin %}hidden{% endif %}" data-section="admin">Admin</a>
                 </nav>
             </div>
         </header>
