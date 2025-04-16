@@ -691,3 +691,17 @@
         .register-link a:hover {
             color: var(--primary-dark);
         }
+
+        .flashes {
+            list-style: none;
+            padding: 10px;
+            margin-bottom: 15px;
+          }
+          
+          .flashes li.error {
+            background-color: #ffe0e0;
+            color: #d8000c;
+            padding: 10px;
+            border: 1px solid #d8000c;
+            border-radius: 5px;
+          }

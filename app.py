@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session # type: ignore
+from flask import Flask, render_template, request, redirect, session, flash  # type: ignore
 from flask_sqlalchemy import SQLAlchemy # type: ignore
 from flask_bcrypt import Bcrypt # type: ignore
 
@@ -40,6 +40,11 @@ def index():
 def register():
     if request.method == 'POST':
         email = request.form['email']
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            flash('Ein Benutzer mit dieser E-Mail existiert bereits.', 'error')
+            return redirect('/register')
+        
         password = bcrypt.generate_password_hash(request.form['password']).decode('utf-8')
         user = User(email=email, password=password)
         db.session.add(user)
