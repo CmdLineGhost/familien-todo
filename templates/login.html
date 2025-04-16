@@ -58,7 +58,16 @@
                             </div>
                             <div class="card-body">
                                 <ul class="todo-list" id="todoList">
-                                    <!-- Aufgaben werden hier dynamisch eingefügt -->
+                                    {% if tasks %}
+                                        {% for task in tasks %}
+                                            <li class="todo-item">
+                                                <span class="todo-title">{{ task.title }}</span>
+                                                <!-- Optional: weitere Task-Infos anzeigen -->
+                                            </li>
+                                        {% endfor %}
+                                    {% else %}
+                                        <li class="todo-item">Keine Aufgaben vorhanden.</li>
+                                    {% endif %}
                                 </ul>
                             </div>
                         </div>
