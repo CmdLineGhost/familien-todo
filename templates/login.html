@@ -9,6 +9,10 @@
 <body>
     <!-- Login Screen (initial state) -->
     <div class="login-container" id="loginContainer" {% if show_app_content %}style="display: none;"{% endif %}>
+        <!--Logo rechts neben den Formular-->
+        <div class="login-logo">
+            <img src="{{ url_for('static', filename='images/fame-logo.png') }}" alt="Logo">
+        </div>
         <div class="login-card">
             <h2 class="login-title">Familien-Organizer Login</h2>
             <form class="login-form" id="loginForm" method="POST" action="/login">
